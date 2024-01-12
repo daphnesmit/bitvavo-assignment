@@ -1,53 +1,27 @@
 import { ColumnDef } from '@tanstack/react-table';
 
-import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { markets } from '../../data/markets';
-import { Ticker24hUpdate, bitvavoClient } from '../../utils/bitvavo';
-import { calculateChange } from '../../utils/calculateChange';
-import { getMinimumFractionDigitsPrice } from '../../utils/getMinimumFractionDigitsPrice';
 import { slugify } from '../../utils/slugify';
-import { Loader } from '../Loader/Loader';
+import { Link } from '../Link/Link';
 import MarketIcon from '../MarketIcon/MarketIcon';
 import { Table } from '../Table/Table';
-import { Link } from '../Link/Link';
-
-interface Market {
-  market: string;
-  price: string | null;
-  change: string | null;
-  volume: string | null;
-}
-
-const getMarketsTableData = (data?: Ticker24hUpdate[]) => {
-  return data?.map((asset: Ticker24hUpdate) => ({
-    market: asset.market,
-    price: asset.last,
-    change: calculateChange(asset),
-    volume: asset.volumeQuote,
-  }));
-};
+import { useMarkets } from './UseMarkets';
+import { MarketTableData } from './utils/getMarketsTableData';
+import { getMinimumFractionDigitsPrice } from './utils/getMinimumFractionDigitsPrice';
 
 export const MarketsTable = () => {
-  const { isLoading, error, data, isFetching } = useQuery<Ticker24hUpdate[]>({
-    queryKey: ['ticker24h'],
-    queryFn: bitvavoClient.ticker24h,
-  });
+  const { tableData } = useMarkets();
 
-  console.log('isFetching', isFetching);
-  console.log('isLoading', isLoading);
-  console.log('error', error);
-  console.log('data', data);
-  const assets = useMemo(() => getMarketsTableData(data), [data]);
+  console.log('>>>>>>MarketsTable - markets', tableData);
 
-  const columns = useMemo<ColumnDef<Market>[]>(
+  const columns = useMemo<ColumnDef<MarketTableData>[]>(
     () => [
       {
         accessorKey: 'market',
         header: 'Market',
-        cell: ({ getValue }) => {
-          const [icon] = getValue<string>().split('-');
-          const market = markets[getValue<string>()] || getValue<string>();
+        cell: ({ row }) => {
+          const icon = row.original.symbol;
+          const market = row.original.market;
 
           return (
             <a href={`https://bitvavo.com/en/${slugify(market)}/price`}>
@@ -65,12 +39,13 @@ export const MarketsTable = () => {
         },
       },
       {
+        accessorFn: (asset) => Number(asset.price),
         accessorKey: 'price',
         header: 'Price',
         cell: ({ row }) => {
           const price = Number(row.original.price);
 
-          if (!row.original.price || isNaN(price)) {
+          if (!price || isNaN(price)) {
             return null;
           }
 
@@ -104,7 +79,8 @@ export const MarketsTable = () => {
         header: 'Volume',
         cell: ({ row }) => {
           const volume = Number(row.original.volume);
-          if (!row.original.volume || isNaN(volume)) {
+
+          if (!volume || isNaN(volume)) {
             return null;
           }
 
@@ -115,7 +91,7 @@ export const MarketsTable = () => {
         header: 'link',
         enableSorting: false,
         cell: ({ row }) => {
-          const market = markets[row.original.market] || row.original.market;
+          const market = row.original.market;
 
           return <Link href={`https://bitvavo.com/en/${slugify(market)}/price`} label="Buy" />;
         },
@@ -124,13 +100,11 @@ export const MarketsTable = () => {
     [],
   );
 
-  if (isLoading) return <Loader />;
-
-  if (!assets) return null;
   return (
-    <Table<Market>
+    <Table<MarketTableData>
       columns={columns}
-      data={assets}
+      data={tableData}
+      gridColumns="30% 15% 1fr 1fr 10%"
       initialState={{
         sorting: [
           {

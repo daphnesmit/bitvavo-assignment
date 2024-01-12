@@ -16,9 +16,6 @@ export default {
           inter: ['Inter', ...defaultTheme.fontFamily.sans],
         }
       },
-      gridTemplateColumns: {
-        'assets-table-row': '30% 15% 1fr 1fr 10%',
-      }
     },
   },
   plugins: [],

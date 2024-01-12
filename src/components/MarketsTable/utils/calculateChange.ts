@@ -1,6 +1,6 @@
-import { Ticker24hUpdate } from './bitvavo';
+import { Ticker24hData } from '../../../utils/bitvavo';
 
-export const calculateChange = (update: Ticker24hUpdate): string => {
+export const calculateChange = (update: Ticker24hData): string => {
   const { ask, bid, open } = update;
 
   if (!ask || !bid || !open) return '0.00';

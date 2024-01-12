@@ -22,8 +22,8 @@ export const Link = ({ href, label }: LinkProps) => {
           <path
             d="m9 4 3.6 3.6L9 11.2M12.6 7.6H3"
             stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           ></path>
         </svg>
       </div>
