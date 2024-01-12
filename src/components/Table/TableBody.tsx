@@ -33,15 +33,11 @@ export function TableBody<T>({ table, tableRef }: TableBodyProps<T>) {
             style={{
               transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)`,
             }}
-            className={`grid-cols-assets-table-row absolute grid w-full border-b border-gray-200`}
+            className={`absolute grid w-full grid-cols-assets-table-row border-b border-gray-200`}
           >
             {row.getVisibleCells().map((cell) => {
               return (
-                <td
-                  key={cell.id}
-                  style={{ '--column-cell-size': `${cell.column.getSize()}px` }}
-                  className={`flex w-[--columns-cell-size] px-5 py-5`}
-                >
+                <td key={cell.id} className={`flex px-4 py-5`}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               );

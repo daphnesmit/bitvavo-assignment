@@ -10,24 +10,22 @@ export function TableHead<T>({ table }: TableHeadProps<T>) {
       {table.getHeaderGroups().map((headerGroup) => (
         <tr
           key={headerGroup.id}
-          className={`grid-cols-assets-table-row grid w-full border-b-2 border-gray-200`}
+          className={`grid w-full grid-cols-assets-table-row border-b-2 border-gray-200`}
         >
           {headerGroup.headers.map((header) => {
             return (
-              <th
-                style={{ '--header-cell-size': `${header.getSize()}px` }}
-                className={`flex w-[--header-cell-size] px-5 py-5`}
-                key={header.id}
-              >
+              <th className={`flex`} key={header.id}>
                 <div
                   role="button"
-                  className={`flex w-full justify-between ${
+                  className={`flex w-full justify-between whitespace-nowrap px-4 py-5 ${
                     header.column.getCanSort() ? 'cursor-pointer select-none' : ''
                   }`}
                   onClick={header.column.getToggleSortingHandler()}
-                  onKeyDown={
-                    header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && header.column.getCanSort()) {
+                      return header.column.toggleSorting();
+                    }
+                  }}
                   tabIndex={header.column.getCanSort() ? 0 : undefined}
                 >
                   <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>

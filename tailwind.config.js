@@ -14,11 +14,10 @@ export default {
       extend: {
         fontFamily: {
           inter: ['Inter', ...defaultTheme.fontFamily.sans],
-          gilroy: ['Gilroy', ...defaultTheme.fontFamily.sans]
         }
       },
       gridTemplateColumns: {
-        'assets-table-row': '30% repeat(4, minmax(200px, 1fr))',
+        'assets-table-row': '30% 15% 1fr 1fr 10%',
       }
     },
   },

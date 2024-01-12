@@ -29,7 +29,7 @@ export function Table<T>({ columns, data, ...rest }: TableProps<T>) {
     <div className="w-full overflow-x-auto">
       <table
         ref={tableRef}
-        className="grid w-max min-w-full border-collapse border-spacing-0 text-gray-900"
+        className="grid w-max min-w-[800px] border-collapse border-spacing-0 text-gray-900 md:min-w-full"
       >
         <TableHead table={table} />
         <TableBody table={table} tableRef={tableRef} />
