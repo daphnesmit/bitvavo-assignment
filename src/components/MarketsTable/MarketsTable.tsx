@@ -88,6 +88,7 @@ export const MarketsTable = () => {
         },
       },
       {
+        accessorKey: 'symbol',
         header: 'link',
         enableSorting: false,
         cell: ({ row }) => {

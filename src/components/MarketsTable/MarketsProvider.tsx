@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { markets } from '../../data/markets';
 import { Ticker24hData, bitvavoClient } from '../../utils/bitvavo';
 import { MarketsContext, MarketsContextProps } from './MarketsContext';
@@ -12,9 +12,14 @@ interface MarketsProviderProps {
 const MarketsProvider = ({ data, children }: React.PropsWithChildren<MarketsProviderProps>) => {
   const [ticker24Data, setTicker24Data] = useState<Ticker24hData[]>(data);
 
+  const hasSubscribed = useRef(false);
+
   const tableData = useMemo(() => getMarketsTableData(ticker24Data), [ticker24Data]);
 
   useEffect(() => {
+    if (hasSubscribed.current) return;
+
+    hasSubscribed.current = true;
     bitvavoClient.subscription.ticker24h(Object.keys(markets), (newData) => {
       setTicker24Data((oldData) => updateTicker24Data(oldData, newData));
     });

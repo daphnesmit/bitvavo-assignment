@@ -1,13 +1,15 @@
 import {
   getCoreRowModel,
+  getFilteredRowModel,
   getSortedRowModel,
   TableOptions,
   useReactTable,
 } from '@tanstack/react-table';
 
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useRef, useState } from 'react';
 import { TableBody } from './TableBody';
 import { TableHead } from './TableHead';
+import { TableSearch } from './TableSearch';
 
 interface TableProps<TData>
   extends Pick<TableOptions<TData>, 'columns' | 'data'>,
@@ -33,23 +35,35 @@ const TableElement = forwardRef(
 );
 
 export function Table<T>({ columns, data, gridColumns, ...rest }: TableProps<T>) {
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [globalFilter, setGlobalFilter] = useState('');
+
   const table = useReactTable({
     data,
     columns,
+    state: {
+      globalFilter,
+    },
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     debugTable: import.meta.env.DEV,
     ...rest,
   });
 
-  const tableRef = React.useRef<HTMLTableElement>(null);
-
   return (
-    <TableScroller>
-      <TableElement ref={tableRef}>
-        <TableHead table={table} gridColumns={gridColumns} />
-        <TableBody table={table} gridColumns={gridColumns} tableRef={tableRef} />
-      </TableElement>
-    </TableScroller>
+    <div className="flex flex-col items-end">
+      <TableSearch
+        globalFilter={globalFilter}
+        onChange={(value) => setGlobalFilter(String(value))}
+      />
+      <TableScroller>
+        <TableElement ref={tableRef}>
+          <TableHead table={table} gridColumns={gridColumns} />
+          <TableBody table={table} gridColumns={gridColumns} tableRef={tableRef} />
+        </TableElement>
+      </TableScroller>
+    </div>
   );
 }

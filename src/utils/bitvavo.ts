@@ -53,12 +53,13 @@ function bitvavo({ REST_URL, WS_URL }: BitvavoOptions): BitvavoReturn {
     switch (event) {
       case 'ticker24h':
         ticker24hCallback?.(data as Ticker24hData[]);
+        // websocket?.close();
         break;
     }
   }
 
   function sendToSocket(data: Record<string, unknown>) {
-    console.debug('SUBSCRIBE: ', data);
+    console.debug('>>> SEND TO SOCKET: ', data);
     websocket?.send(JSON.stringify(data));
   }
   async function startSocket() {
@@ -98,7 +99,7 @@ function bitvavo({ REST_URL, WS_URL }: BitvavoOptions): BitvavoReturn {
     console.log('INIT websocket - websocket', websocket);
     console.log('INIT websocket - hasNotConnected', hasNotConnected);
     console.log('INIT websocket - hasStarted', hasStarted);
-    if (!websocket && hasStarted === false) {
+    if (!websocket && !hasStarted) {
       hasStarted = true;
       console.log('START websocket');
       await startSocket();
@@ -121,7 +122,9 @@ function bitvavo({ REST_URL, WS_URL }: BitvavoOptions): BitvavoReturn {
       ) {
         console.log('SUBSCRIBE ticker24h');
         ticker24hCallback = callback;
+
         await initSocket();
+        console.log('INITED SOCKET!');
         sendToSocket({
           action: 'subscribe',
           channels: [{ name: 'ticker24h', markets }],
