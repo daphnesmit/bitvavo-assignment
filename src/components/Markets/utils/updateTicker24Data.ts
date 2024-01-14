@@ -1,4 +1,4 @@
-import { Ticker24hData } from '../../../utils/bitvavo';
+import { Ticker24hData } from '../../../utils/queries';
 
 export const updateTicker24Data = (oldData: Ticker24hData[], newData: Ticker24hData[]) => {
   return oldData.map((item) => {

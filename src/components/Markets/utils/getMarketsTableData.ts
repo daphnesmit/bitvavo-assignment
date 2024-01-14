@@ -1,5 +1,5 @@
 import { markets } from '../../../data/markets';
-import { Ticker24hData } from '../../../utils/bitvavo';
+import { Ticker24hData } from '../../../utils/queries';
 import { calculateChange } from './calculateChange';
 
 export interface MarketTableData {
