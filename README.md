@@ -25,7 +25,7 @@ This setup is using the following technologies:
 
 
 ## Sidenotes
-- The WebSocket part was the most challenging part for me therefor I didn't really spend too much time on the responsiveness or unit tests. Since those things I already did a lot during my career and I could demonstrate those from my current freelance assignment.
+- The WebSocket part was the most challenging part for me therefore I didn't really spend too much time on the responsiveness or unit tests. Since those things I already did a lot during my career and I could demonstrate those from my current freelance assignment.
 - The code contains some TODO and FIXME comments of things I didnt completely get to. 
 - The code uses a custom hook called useSocket. Normally I would use a library like react-use-websocket or so, which already deals with a lot of things like reconnecting and retrying. For the purpose of this test I made a hook myself.
 - I did not get to the unit tests yet but I have a lot of code of my current project where I wrote about 100+ unit tests
