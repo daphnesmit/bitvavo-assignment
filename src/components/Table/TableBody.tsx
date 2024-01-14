@@ -1,4 +1,4 @@
-import { Cell, flexRender, Row, Table } from '@tanstack/react-table';
+import { Cell, flexRender, Table } from '@tanstack/react-table';
 import { useWindowVirtualizer, VirtualItem } from '@tanstack/react-virtual';
 
 interface TableBodyCellProps<T> {
@@ -69,7 +69,7 @@ export function TableBody<T>({
       className="relative grid"
     >
       {virtualizer.getVirtualItems().map((item) => {
-        const row = rows[item.index] as Row<T>;
+        const row = rows[item.index];
         return (
           <TableBodyRow
             key={row.id}
