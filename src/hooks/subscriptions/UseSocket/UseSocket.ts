@@ -73,6 +73,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const { connect: contextConnect, url: contextUrl } = useSocketContext();
 
+  // TODO: implement message queue here so we can call sendData before the socket is connected
   const socket = useRef<WebSocket>();
   const reconnect = useRef<boolean>(false);
   const reconnectTimer = useRef<number>(reconnectInterval);
@@ -138,6 +139,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
 
       // Connection Closed; try to reconnect when reconnect is true
+      // TODO: implement max reconnect attempts
       if (reconnect.current) {
         setTimeout(() => {
           console.warn('Reconnecting...', reconnectTimer.current);
