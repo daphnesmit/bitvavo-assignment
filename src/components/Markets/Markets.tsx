@@ -9,6 +9,9 @@ import { useMarkets } from './UseMarkets';
 export const MarketsContainer = ({ children }: React.PropsWithChildren) => {
   const { isLoading, hasError } = useMarkets();
 
+  /**
+   * TODO: implement a skeleton loader in the table
+   */
   if (isLoading) return <Loader />;
 
   if (hasError) {

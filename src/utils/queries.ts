@@ -19,7 +19,7 @@ interface Queries {
 
 async function get<T>(path: string, options = {}): Promise<T> {
   const response = await fetch(`${import.meta.env.VITE_BITVAVO_REST_URL}${path}`, options);
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
 const queries: Queries = {

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSocketContext } from './context';
@@ -10,13 +13,10 @@ export enum READY_STATE {
   CLOSED = 3,
 }
 /** Event types */
-export declare type OnOpenFunc = (data: unknown | never) => void;
-export declare type OnCloseFunc = (data: unknown | never) => void;
-export declare type OnErrorFunc = (data: unknown | never) => void;
-export declare type OnMessageFunc<T extends SocketJSONType> = (
-  data: unknown | never,
-  json: T,
-) => void;
+export declare type OnOpenFunc = (data: any) => void;
+export declare type OnCloseFunc = (data: any) => void;
+export declare type OnErrorFunc = (data: any) => void;
+export declare type OnMessageFunc<T extends SocketJSONType> = (data: any, json: T) => void;
 export declare type OnTabLeaveFunc = (readyState: READY_STATE) => void;
 export declare type OnTabEnterFunc = (readyState: READY_STATE) => void;
 export interface SocketEvents<T extends SocketJSONType> {
@@ -50,6 +50,8 @@ export interface UseSocketProps<T extends SocketJSONType> extends SocketEvents<T
 /**
  * Normally I would use a library for this like react-use-websocket, because dealing with websockets in React StrictMode is painful.
  * For the purpose of this assessment I have created my own useSocket hook.
+ *
+ * FIXME: This hook is not fully tested and is not production ready. It uses currently a lot of anys and is not fully typed.
  * @see https://www.npmjs.com/package/react-use-websocket
  */
 const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
