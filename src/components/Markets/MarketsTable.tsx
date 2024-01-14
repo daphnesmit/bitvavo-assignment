@@ -12,8 +12,6 @@ import { getMinimumFractionDigitsPrice } from './utils/getMinimumFractionDigitsP
 export const MarketsTable = () => {
   const { tableData } = useMarkets();
 
-  console.log('>>>>>>MarketsTable - markets', tableData);
-
   const columns = useMemo<ColumnDef<MarketTableData>[]>(
     () => [
       {
