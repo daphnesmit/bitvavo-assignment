@@ -20,15 +20,7 @@ const useSubscriptionTicker24h = ({
   >({
     onOpen: () => {
       // Subscribe to the ticker24h channel
-      sendData({
-        action: 'subscribe',
-        channels: [
-          {
-            name: 'ticker24h',
-            markets,
-          },
-        ],
-      });
+      console.log('open');
     },
   });
 
@@ -38,8 +30,16 @@ const useSubscriptionTicker24h = ({
    * when unmouting the component, the socket is closed so this should be fine
    */
   useEffect(() => {
-    connect();
-  }, [connect]);
+    sendData({
+      action: 'subscribe',
+      channels: [
+        {
+          name: 'ticker24h',
+          markets,
+        },
+      ],
+    });
+  }, []);
 
   return { readyState, sendData, hasError };
 };

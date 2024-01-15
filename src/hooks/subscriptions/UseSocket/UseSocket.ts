@@ -42,9 +42,9 @@ export interface SocketResponse<T extends SocketJSONType, J extends SocketJSONTy
 export interface UseSocketProps<T extends SocketJSONType> extends SocketEvents<T> {
   endpoint?: string;
   url?: string;
+  shouldConnect?: boolean;
   reconnectInterval?: number;
-  // TODO: implement max reconnect attempts
-  // reconnectAttempts?: number;
+  maxRetries?: number;
 }
 
 /**
@@ -62,7 +62,9 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
   const {
     url: propUrl,
     endpoint,
+    shouldConnect = true,
     reconnectInterval = 1000,
+    maxRetries = 5,
     onClose,
     onError,
     onMessage,
@@ -76,12 +78,14 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
   // TODO: implement message queue here so we can call sendData before the socket is connected
   const socket = useRef<WebSocket>();
   const reconnect = useRef<boolean>(false);
+  const retryCount = useRef<number>(0);
   const reconnectTimer = useRef<number>(reconnectInterval);
 
   const onCloseRef = useRef<(event: any) => void>();
   const onMessageRef = useRef<(event: any) => void>();
   const onErrorRef = useRef<(event: any) => void>();
   const onOpenRef = useRef<(event: any) => void>();
+  const messageQueue = useRef<Array<J>>([]);
 
   const [socketState, setSocketState] = useState<SocketState<T>>({
     readyState: READY_STATE.CLOSED,
@@ -115,9 +119,14 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
   const onopen = useCallback(
     (event: any) => {
       setSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
+      // Process queued messages once the connection is open
+      messageQueue.current.forEach((message) => {
+        socket.current?.send(JSON.stringify(message));
+      });
+      messageQueue.current = [];
       return onOpen?.(event);
     },
-    [onOpen],
+    [messageQueue, onOpen],
   );
 
   const onmessage = useCallback(
@@ -138,17 +147,24 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     (event: any) => {
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
 
-      // Connection Closed; try to reconnect when reconnect is true
-      // TODO: implement max reconnect attempts
-      if (reconnect.current) {
-        setTimeout(() => {
-          console.warn('Reconnecting...', reconnectTimer.current);
-          connect();
-        }, reconnectTimer.current * 2);
+      /**
+       * Connection Closed; try to reconnect when reconnect is true
+       * 1000: Normal Closure. This means that the connection was closed, or is being closed, without any error.
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+       */
+      console.warn('Reconnecting...', event.code);
+      if (event.code !== 1000) {
+        if (retryCount.current < maxRetries) {
+          setTimeout(() => {
+            console.warn('Reconnecting...', reconnectTimer.current);
+            retryCount.current = retryCount.current + 1;
+            connect();
+          }, reconnectInterval);
+        }
       }
       onClose?.(event);
     },
-    [onClose, connect],
+    [onClose, maxRetries, reconnectInterval, connect],
   );
 
   // Fixme: Some anys used here because addEventListener websocket types keep complaining
@@ -160,15 +176,24 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     [onError],
   );
 
-  const sendData = useCallback((data: J) => {
-    socket.current?.send(JSON.stringify(data));
-  }, []);
+  // const sendData = useCallback((data: J) => {
+  //   socket.current?.send(JSON.stringify(data));
+  // }, []);
+
+  const sendData = (message: J) => {
+    if (socket.current?.readyState === WebSocket.OPEN) {
+      // Send the message if the connection is open
+      socket.current.send(JSON.stringify(message));
+    } else {
+      // Queue the message if the connection is not open
+      messageQueue.current = [...messageQueue.current, message];
+    }
+  };
 
   /**
    * Close the websocket connection; do not reconnect
    */
   const close = useCallback((code?: number, reason?: string) => {
-    reconnect.current = false;
     socket.current?.close(code, reason);
   }, []);
 
@@ -176,35 +201,39 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
    * When the tab is not focussed, close the connection.
    * When the tab is focussed, try to reconnect.
    */
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!socket.current) return;
+  // useEffect(() => {
+  //   const handleVisibilityChange = () => {
+  //     if (!socket.current) return;
 
-      if (document.visibilityState === 'hidden') {
-        close();
-        onTabLeave?.(socket.current?.readyState);
-      } else {
-        // Connection Closing but not closed yet; just set reconect to true so it will reconnect on close.
-        if (socket.current?.readyState === WebSocket.CLOSING) {
-          reconnect.current = true;
-          setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
-          onTabEnter?.(WebSocket.CLOSING);
-        }
-        // Connection Closed; try to reconnect directly
-        if (socket.current?.readyState === WebSocket.CLOSED) {
-          setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
-          connect();
-          onTabEnter?.(WebSocket.CLOSED);
-        }
-      }
-    };
+  //     if (document.visibilityState === 'hidden') {
+  //       console.log('hidden');
+  //       close();
+  //       onTabLeave?.(socket.current?.readyState);
+  //     } else {
+  //       console.log('visible');
+  //       // Connection Closing but not closed yet; just set reconect to true so it will reconnect on close.
+  //       if (socket.current?.readyState === WebSocket.CLOSING) {
+  //         setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
+  //         onTabEnter?.(WebSocket.CLOSING);
+  //       }
+  //       // Connection Closed; try to reconnect directly
+  //       if (socket.current?.readyState === WebSocket.CLOSED) {
+  //         setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
+  //         connect();
+  //         onTabEnter?.(WebSocket.CLOSED);
+  //       }
+  //       // connect();
+  //     }
+  //   };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+  //   document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [close, connect, onTabEnter, onTabLeave]);
+  //   return () => {
+  //     document.removeEventListener('visibilitychange', handleVisibilityChange);
+  //     console.log('visibility unmount');
+  //     // socket.current?.close();
+  //   };
+  // }, [close, connect, onTabEnter, onTabLeave]);
 
   /**
    * Because onclose calls connect() again. we get a cirular dependency.
@@ -219,10 +248,15 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
    * Close the websocket connection on unmount
    */
   useEffect(() => {
-    return () => {
-      close(1000, 'Disconnecting Socket on unmount!');
-    };
-  }, [close]);
+    if (shouldConnect) {
+      console.log('should connect');
+      connect();
+
+      return () => {
+        close(1000, 'Disconnecting Socket on unmount!');
+      };
+    }
+  }, [close, shouldConnect, connect]);
 
   return {
     connect,
