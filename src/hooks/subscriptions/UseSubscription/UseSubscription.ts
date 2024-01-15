@@ -70,7 +70,12 @@ const useSubscription: <T extends WebSocketEvent, J extends WebSocketInput>(
     [onErrorProp],
   );
 
-  const { connect, readyState, sendData, socket } = useSocket<T, J>({
+  const {
+    connect,
+    readyState,
+    sendData: sendDataToSocket,
+    socket,
+  } = useSocket<T, J>({
     endpoint,
     onMessage,
     onOpen,
@@ -78,25 +83,25 @@ const useSubscription: <T extends WebSocketEvent, J extends WebSocketInput>(
     onError,
   });
 
-  const send: SendDataFunc = useCallback(
+  const sendData: SendDataFunc = useCallback(
     ({ name, action, channel }) => {
-      sendData(`${action}${name}`, {
+      sendDataToSocket(`${action}${name}`, {
         action,
         channels: [channel],
       } as J);
     },
-    [sendData],
+    [sendDataToSocket],
   );
 
   return useMemo(
     () => ({
       connect,
       hasError,
-      sendData: send,
+      sendData,
       readyState,
       socket,
     }),
-    [connect, hasError, send, readyState, socket],
+    [connect, hasError, sendData, readyState, socket],
   );
 };
 

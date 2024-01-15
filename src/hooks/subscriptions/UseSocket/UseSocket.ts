@@ -132,7 +132,8 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const onopen = useCallback(
     (event: any) => {
-      resetRetryCount();
+      console.log('onopen', { event, socket: socket.current?.readyState });
+      // resetRetryCount();
       setSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
       sendSubscriptions();
 

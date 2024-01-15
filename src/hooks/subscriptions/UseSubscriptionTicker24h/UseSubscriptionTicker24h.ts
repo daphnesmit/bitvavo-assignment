@@ -23,12 +23,14 @@ const useSubscriptionTicker24h = ({
    * this is a workaround to prevent the socket from subscribing twice.
    */
   useEffect(() => {
+    if (hasError) return;
     if (hasSubscribed.current) return;
 
     hasSubscribed.current = true;
 
+    console.log('send it', readyState);
     sendData({ name: 'ticker24h', action: 'subscribe', channel: { name: 'ticker24h', markets } });
-  }, [markets, sendData]);
+  }, [sendData, hasError, readyState, markets]);
 
   return { readyState, sendData, hasError };
 };

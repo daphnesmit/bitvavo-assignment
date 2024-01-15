@@ -35,11 +35,9 @@ export const Markets = () => {
 
   return (
     <MarketsProvider>
+      <MarketsStatusIndicator statusCode={hasError ? 4 : readyState} />
       <MarketsContainer>
-        <div>
-          <MarketsStatusIndicator statusCode={hasError ? 4 : readyState} />
-          <MarketsTable />
-        </div>
+        <MarketsTable />
       </MarketsContainer>
     </MarketsProvider>
   );
