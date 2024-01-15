@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSocketContext } from './context';
 
 export declare type SocketJSONType = Record<never, never>;
@@ -80,10 +80,10 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
   const retryCount = useRef<number>(0);
   const reconnectTimer = useRef<number>(reconnectInterval);
 
-  const onCloseRef = useRef<(event: any) => void>();
-  const onMessageRef = useRef<(event: any) => void>();
-  const onErrorRef = useRef<(event: any) => void>();
-  const onOpenRef = useRef<(event: any) => void>();
+  const onCloseRef = useRef<WebSocket['onclose']>();
+  const onMessageRef = useRef<WebSocket['onmessage']>();
+  const onErrorRef = useRef<WebSocket['onerror']>();
+  const onOpenRef = useRef<WebSocket['onopen']>();
   const subscriptions = useRef<Map<string, any>>(new Map());
 
   const [socketState, setSocketState] = useState<SocketState<T>>({
@@ -130,10 +130,9 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     });
   }, []);
 
-  const onopen = useCallback(
-    (event: any) => {
-      console.log('onopen', { event, socket: socket.current?.readyState });
-      // resetRetryCount();
+  const onopen: WebSocket['onopen'] = useCallback(
+    (event: WebSocketEventMap['open']) => {
+      resetRetryCount();
       setSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
       sendSubscriptions();
 
@@ -142,8 +141,8 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     [onOpen, resetRetryCount, sendSubscriptions],
   );
 
-  const onmessage = useCallback(
-    (event: any) => {
+  const onmessage: WebSocket['onmessage'] = useCallback(
+    (event: MessageEvent) => {
       setSocketState((old) => ({ ...old, lastData: event.data }));
       let { data } = event;
       try {
@@ -156,46 +155,57 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     [onMessage],
   );
 
-  const onclose = useCallback(
-    (event: any) => {
+  const onclose: WebSocket['onclose'] = useCallback(
+    (event: CloseEvent) => {
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
+      onClose?.(event);
 
       /**
        * Connection Closed; try to reconnect when reconnect is true
+       *
        * 1000: Normal Closure. This means that the connection was closed, or is being closed, without any error.
+       * 1005: No Status Received. This is unfortunately send back when bitvavo api hits the rate limiting. This is not a status code we can handle.
+       *
+       * TODO: I suggest to add a better status code to the bitvavo api when rate limiting is hit.
+       *
        * @see https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
        */
-      if (event.code !== 1000) {
-        if (retryCount.current < maxRetries) {
-          setTimeout(() => {
-            console.warn('Reconnecting...', { maxRetries, retryCount: retryCount.current });
-            retryCount.current = retryCount.current + 1;
-            connect();
-          }, reconnectTimer.current * retryCount.current);
-        }
+
+      if (event.code === 1000 || event.code === 1005 || retryCount.current >= maxRetries) {
+        return;
       }
+
+      setTimeout(() => {
+        console.warn('Reconnecting...', { maxRetries, retryCount: retryCount.current });
+        retryCount.current = retryCount.current + 1;
+        connect();
+      }, reconnectTimer.current * retryCount.current);
+
       onClose?.(event);
     },
     [onClose, maxRetries, connect],
   );
 
   // Fixme: Some anys used here because addEventListener websocket types keep complaining
-  const onerror = useCallback(
-    (event: any) => {
+  const onerror: WebSocket['onerror'] = useCallback(
+    (event: Event) => {
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
       onError?.(event);
     },
     [onError],
   );
 
-  const sendData = (name: string, message: J) => {
-    subscribe(name, message);
+  const sendData = useCallback(
+    (name: string, message: J) => {
+      subscribe(name, message);
 
-    // Send the message directly if the connection is already open
-    if (socket.current?.readyState === WebSocket.OPEN) {
-      socket.current.send(JSON.stringify(message));
-    }
-  };
+      // Send the message directly if the connection is already open
+      if (socket.current?.readyState === WebSocket.OPEN) {
+        socket.current.send(JSON.stringify(message));
+      }
+    },
+    [subscribe],
+  );
 
   /**
    * Close the websocket connection; do not reconnect
@@ -259,12 +269,16 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     }
   }, [close, connect, shouldConnect]);
 
-  return {
-    connect,
-    socket: socket.current,
-    sendData,
-    ...socketState,
-  } as SocketResponse<T, J>;
+  return useMemo(
+    () =>
+      ({
+        connect,
+        socket: socket.current,
+        sendData,
+        ...socketState,
+      }) as SocketResponse<T, J>,
+    [connect, sendData, socketState],
+  );
 };
 
 export { useSocket };

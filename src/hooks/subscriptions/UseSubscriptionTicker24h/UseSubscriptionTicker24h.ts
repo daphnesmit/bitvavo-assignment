@@ -18,19 +18,18 @@ const useSubscriptionTicker24h = ({
   const { sendData, readyState, hasError } = useSubscription<EventTicker24h, InputTicker24h>();
 
   /**
-   * React StrictMode calls the useEffect twice on mount;
-   * Keep track if we already subscribed with a ref.
-   * this is a workaround to prevent the socket from subscribing twice.
+   * React StrictMode calls the useEffect twice on mount in DEV mode;
+   *
+   * Calling the sendData function twice is not a problem because the socket will just open and close twice
+   * But let's keep track of the subscription state to prevent unnecessary calls.
    */
   useEffect(() => {
-    if (hasError) return;
-    if (hasSubscribed.current) return;
+    if (hasError || hasSubscribed.current) return;
 
     hasSubscribed.current = true;
 
-    console.log('send it', readyState);
     sendData({ name: 'ticker24h', action: 'subscribe', channel: { name: 'ticker24h', markets } });
-  }, [sendData, hasError, readyState, markets]);
+  }, [hasError, markets, sendData]);
 
   return { readyState, sendData, hasError };
 };
