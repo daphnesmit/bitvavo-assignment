@@ -10,12 +10,16 @@ interface InputAction {
 }
 
 /** WebSocket input types */
-export interface ChannelTicker24h extends Record<string, unknown> {
+export interface Channel extends Record<string, unknown> {
+  name: string;
+}
+export interface ChannelTicker24h extends Channel {
   name: 'ticker24h';
   markets: string[];
 }
+export type InputChannels = ChannelTicker24h;
 export interface InputTicker24h extends InputAction {
-  channels: ChannelTicker24h[];
+  channels: InputChannels[];
 }
 export type WebSocketInput = InputTicker24h;
 

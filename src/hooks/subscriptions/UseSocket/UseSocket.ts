@@ -37,7 +37,7 @@ export interface SocketResponse<T extends SocketJSONType, J extends SocketJSONTy
   extends SocketState<T> {
   connect: () => WebSocket;
   socket: WebSocket;
-  sendData: (data: J) => void;
+  sendData: (name: string, data: J) => void;
 }
 export interface UseSocketProps<T extends SocketJSONType> extends SocketEvents<T> {
   endpoint?: string;
@@ -84,7 +84,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
   const onMessageRef = useRef<(event: any) => void>();
   const onErrorRef = useRef<(event: any) => void>();
   const onOpenRef = useRef<(event: any) => void>();
-  const messageQueue = useRef<Array<J>>([]);
+  const subscriptions = useRef<Map<string, any>>(new Map());
 
   const [socketState, setSocketState] = useState<SocketState<T>>({
     readyState: READY_STATE.CLOSED,
@@ -115,18 +115,30 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     return _socket;
   }, [propUrl, contextUrl, endpoint, contextConnect]);
 
+  const subscribe = useCallback((subscription: string, data: any) => {
+    subscriptions.current.set(subscription, data);
+  }, []);
+
+  const resetRetryCount = useCallback(() => {
+    retryCount.current = 0;
+  }, []);
+
+  const sendSubscriptions = useCallback(() => {
+    // Send all subscriptions to the websocket
+    subscriptions.current.forEach(function (value) {
+      socket.current?.send(JSON.stringify(value));
+    });
+  }, []);
+
   const onopen = useCallback(
     (event: any) => {
+      resetRetryCount();
       setSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
-      // Process queued messages once the connection is open
-      console.log('messageQueue', messageQueue.current);
-      messageQueue.current.forEach((message) => {
-        socket.current?.send(JSON.stringify(message));
-      });
-      messageQueue.current = [];
+      sendSubscriptions();
+
       return onOpen?.(event);
     },
-    [messageQueue, onOpen],
+    [onOpen, resetRetryCount, sendSubscriptions],
   );
 
   const onmessage = useCallback(
@@ -175,17 +187,12 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     [onError],
   );
 
-  // const sendData = useCallback((data: J) => {
-  //   socket.current?.send(JSON.stringify(data));
-  // }, []);
+  const sendData = (name: string, message: J) => {
+    subscribe(name, message);
 
-  const sendData = (message: J) => {
+    // Send the message directly if the connection is already open
     if (socket.current?.readyState === WebSocket.OPEN) {
-      // Send the message if the connection is open
       socket.current.send(JSON.stringify(message));
-    } else {
-      // Queue the message if the connection is not open
-      messageQueue.current = [...messageQueue.current, message];
     }
   };
 
@@ -205,11 +212,9 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
       if (!socket.current) return;
 
       if (document.visibilityState === 'hidden') {
-        console.log('>hidden');
         close();
         onTabLeave?.(socket.current?.readyState);
       } else {
-        console.log('>visible', socket.current?.readyState);
         // Connection Closing but not closed yet; just set reconect to true so it will reconnect on close.
         if (socket.current?.readyState === WebSocket.CLOSING) {
           setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
@@ -218,7 +223,6 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
         // Connection Closed; try to reconnect directly
         if (socket.current?.readyState === WebSocket.CLOSED) {
           setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
-          // connect();
           onTabEnter?.(WebSocket.CLOSED);
         }
         connect();
@@ -229,8 +233,6 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      console.log('>visibility unmount');
-      // socket.current?.close();
     };
   }, [close, connect, onTabEnter, onTabLeave]);
 
@@ -248,11 +250,9 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
    */
   useEffect(() => {
     if (shouldConnect) {
-      console.log('should connect');
       connect();
 
       return () => {
-        console.log('close');
         close(1000, 'Disconnecting Socket on unmount!');
       };
     }

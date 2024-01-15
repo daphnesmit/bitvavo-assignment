@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { READY_STATE } from '../UseSocket/UseSocket';
-import { useSubscription } from '../UseSubscription/UseSubscription';
+import { SendDataFunc, useSubscription } from '../UseSubscription/UseSubscription';
 import { InputTicker24h, EventTicker24h } from '../UseSubscription/types';
 
 interface UseSubscriptionTicker24hReturn {
   readyState: READY_STATE;
   hasError: boolean;
-  sendData: (input: InputTicker24h) => void;
+  sendData: SendDataFunc;
 }
 interface UseSubscriptionTicker24hProps {
   markets: string[];
@@ -26,15 +26,8 @@ const useSubscriptionTicker24h = ({
     if (hasSubscribed.current) return;
 
     hasSubscribed.current = true;
-    sendData({
-      action: 'subscribe',
-      channels: [
-        {
-          name: 'ticker24h',
-          markets,
-        },
-      ],
-    });
+
+    sendData({ name: 'ticker24h', action: 'subscribe', channel: { name: 'ticker24h', markets } });
   }, [markets, sendData]);
 
   return { readyState, sendData, hasError };

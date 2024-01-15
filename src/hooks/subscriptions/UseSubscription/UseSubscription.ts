@@ -14,8 +14,14 @@ import { WebSocketEvent, WebSocketInput } from './types';
 import { Ticker24hData } from '../../../utils/queries';
 
 /** useSubscription hook */
+export type SendDataFunc = (props: {
+  name: string;
+  action: 'subscribe' | 'unsubscribe';
+  channel: WebSocketInput['channels'][number];
+}) => void;
 interface UseSubscriptionReturn<T extends WebSocketEvent, J extends WebSocketInput>
-  extends Pick<SocketResponse<T, J>, 'connect' | 'readyState' | 'sendData' | 'socket'> {
+  extends Pick<SocketResponse<T, J>, 'connect' | 'readyState' | 'socket'> {
+  sendData: SendDataFunc;
   hasError: boolean;
 }
 const useSubscription: <T extends WebSocketEvent, J extends WebSocketInput>(
@@ -72,15 +78,25 @@ const useSubscription: <T extends WebSocketEvent, J extends WebSocketInput>(
     onError,
   });
 
+  const send: SendDataFunc = useCallback(
+    ({ name, action, channel }) => {
+      sendData(`${action}${name}`, {
+        action,
+        channels: [channel],
+      } as J);
+    },
+    [sendData],
+  );
+
   return useMemo(
     () => ({
       connect,
       hasError,
-      sendData,
+      sendData: send,
       readyState,
       socket,
     }),
-    [connect, hasError, sendData, readyState, socket],
+    [connect, hasError, send, readyState, socket],
   );
 };
 
