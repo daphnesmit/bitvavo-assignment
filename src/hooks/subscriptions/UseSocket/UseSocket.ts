@@ -133,6 +133,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const onopen: WebSocket['onopen'] = useCallback(
     (event: WebSocketEventMap['open']) => {
+      console.log('open');
       resetRetryCount();
       setSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
       sendSubscriptions();
@@ -167,6 +168,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const onclose: WebSocket['onclose'] = useCallback(
     (event: CloseEvent) => {
+      console.log('close');
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
       onClose?.(event);
 
@@ -192,6 +194,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const onerror: WebSocket['onerror'] = useCallback(
     (event: Event) => {
+      console.log('error');
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
       onError?.(event);
     },
@@ -227,16 +230,19 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
       if (!socket.current) return;
 
       if (document.visibilityState === 'hidden') {
+        console.log('hidden...');
         close();
         onTabLeave?.(socket.current?.readyState);
       } else {
         // Connection Closing but not closed yet; just set reconect to true so it will reconnect on close.
         if (socket.current?.readyState === WebSocket.CLOSING) {
+          console.log('closing... visible');
           setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
           onTabEnter?.(WebSocket.CLOSING);
         }
         // Connection Closed; try to reconnect directly
         if (socket.current?.readyState === WebSocket.CLOSED) {
+          console.log('closed... visible');
           setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
           onTabEnter?.(WebSocket.CLOSED);
         }
