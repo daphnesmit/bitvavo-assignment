@@ -14,17 +14,20 @@ export interface Ticker24hData {
 }
 
 interface Queries {
-  ticker24h: () => Promise<Ticker24hData[]>;
+  ticker24h: () => Promise<Ticker24hData[] | undefined>;
 }
 
-async function get<T>(path: string, options = {}): Promise<T> {
+async function get<T>(path: string, options = {}): Promise<T | undefined> {
   const response = await fetch(`${process.env.VITE_BITVAVO_REST_URL}${path}`, options);
+  if (!response.ok) {
+    throw new Error(`${response.status} ${response.statusText}`);
+  }
   return response.json() as Promise<T>;
 }
 
 const queries: Queries = {
   ticker24h: async function (options = {}) {
-    return get<Ticker24hData[]>('/ticker/24h', options);
+    return get<Ticker24hData[] | undefined>('/ticker/24h', options);
   },
 };
 
