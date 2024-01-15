@@ -5,7 +5,7 @@ import { MarketsContext, MarketsContextProps } from './MarketsContext';
 import { getMarketsTableData } from './utils/getMarketsTableData';
 
 const MarketsProvider = ({ children }: React.PropsWithChildren<unknown>) => {
-  const { isLoading, error, data } = useQuery<Ticker24hData[]>({
+  const { isLoading, error, data } = useQuery<Ticker24hData[] | undefined>({
     queryKey: ['ticker24h'],
     queryFn: queries.ticker24h,
     refetchOnWindowFocus: false,

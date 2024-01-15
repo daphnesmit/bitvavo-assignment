@@ -14,11 +14,14 @@ export interface Ticker24hData {
 }
 
 interface Queries {
-  ticker24h: () => Promise<Ticker24hData[]>;
+  ticker24h: () => Promise<Ticker24hData[] | undefined>;
 }
 
-async function get<T>(path: string, options = {}): Promise<T> {
+async function get<T>(path: string, options = {}): Promise<T | undefined> {
   const response = await fetch(`${process.env.VITE_BITVAVO_REST_URL}${path}`, options);
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
   return response.json() as Promise<T>;
 }
 

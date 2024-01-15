@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { READY_STATE } from '../UseSocket/UseSocket';
 import { useSubscription } from '../UseSubscription/UseSubscription';
 import { InputTicker24h, EventTicker24h } from '../UseSubscription/types';
@@ -14,22 +14,18 @@ interface UseSubscriptionTicker24hProps {
 const useSubscriptionTicker24h = ({
   markets,
 }: UseSubscriptionTicker24hProps): UseSubscriptionTicker24hReturn => {
-  const { connect, sendData, readyState, hasError } = useSubscription<
-    EventTicker24h,
-    InputTicker24h
-  >({
-    onOpen: () => {
-      // Subscribe to the ticker24h channel
-      console.log('open');
-    },
-  });
+  const hasSubscribed = useRef<boolean>(false);
+  const { sendData, readyState, hasError } = useSubscription<EventTicker24h, InputTicker24h>();
 
   /**
    * React StrictMode calls the useEffect twice on mount;
-   * so connect() is called twice
-   * when unmouting the component, the socket is closed so this should be fine
+   * Keep track if we already subscribed with a ref.
+   * this is a workaround to prevent the socket from subscribing twice.
    */
   useEffect(() => {
+    if (hasSubscribed.current) return;
+
+    hasSubscribed.current = true;
     sendData({
       action: 'subscribe',
       channels: [
@@ -39,7 +35,7 @@ const useSubscriptionTicker24h = ({
         },
       ],
     });
-  }, []);
+  }, [markets, sendData]);
 
   return { readyState, sendData, hasError };
 };
