@@ -5,7 +5,7 @@ import { slugify } from '../../utils/slugify';
 import { Link } from '../Link/Link';
 import MarketIcon from '../MarketIcon/MarketIcon';
 import { Table } from '../Table/Table';
-import { useMarkets } from './UseMarkets';
+import { useMarkets } from './MarketsProvider/UseMarkets';
 import { MarketTableData } from './utils/getMarketsTableData';
 import { getMinimumFractionDigitsPrice } from './utils/getMinimumFractionDigitsPrice';
 

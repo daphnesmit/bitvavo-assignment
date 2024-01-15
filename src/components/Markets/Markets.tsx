@@ -1,10 +1,11 @@
-import { markets } from '../../data/markets';
+import { useMemo } from 'react';
+import { markets as marketsData } from '../../data/markets';
 import { useSubscriptionTicker24h } from '../../hooks/subscriptions/UseSubscriptionTicker24h/UseSubscriptionTicker24h';
 import { Loader } from '../Loader/Loader';
-import { MarketsProvider } from './MarketsProvider';
+import { MarketsProvider } from './MarketsProvider/MarketsProvider';
+import { useMarkets } from './MarketsProvider/UseMarkets';
 import { MarketsStatusIndicator } from './MarketsStatusIndicator';
 import { MarketsTable } from './MarketsTable';
-import { useMarkets } from './UseMarkets';
 
 export const MarketsContainer = ({ children }: React.PropsWithChildren) => {
   const { isLoading, hasError } = useMarkets();
@@ -29,18 +30,19 @@ export const MarketsContainer = ({ children }: React.PropsWithChildren) => {
 };
 
 export const Markets = () => {
+  const markets = useMemo(() => Object.keys(marketsData), []);
   const { readyState, hasError } = useSubscriptionTicker24h({
-    markets: Object.keys(markets),
+    markets,
   });
 
   return (
-    <MarketsProvider>
-      <MarketsContainer>
-        <div>
-          <MarketsStatusIndicator statusCode={hasError ? 4 : readyState} />
+    <>
+      <MarketsStatusIndicator statusCode={hasError ? 4 : readyState} />
+      <MarketsProvider>
+        <MarketsContainer>
           <MarketsTable />
-        </div>
-      </MarketsContainer>
-    </MarketsProvider>
+        </MarketsContainer>
+      </MarketsProvider>
+    </>
   );
 };

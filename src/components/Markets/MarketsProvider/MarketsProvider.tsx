@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { Ticker24hData, queries } from '../../utils/queries';
+import { Ticker24hData, queries } from '../../../utils/queries';
 import { MarketsContext, MarketsContextProps } from './MarketsContext';
-import { getMarketsTableData } from './utils/getMarketsTableData';
+import { getMarketsTableData } from '../utils/getMarketsTableData';
 
 const MarketsProvider = ({ children }: React.PropsWithChildren<unknown>) => {
   const { isLoading, error, data } = useQuery<Ticker24hData[] | undefined>({

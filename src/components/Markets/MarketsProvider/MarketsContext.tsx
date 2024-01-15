@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import { MarketTableData } from './utils/getMarketsTableData';
+import { MarketTableData } from '../utils/getMarketsTableData';
 
 export interface MarketsContextProps {
   tableData: MarketTableData[];

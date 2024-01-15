@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSocketContext } from './context';
 
 export declare type SocketJSONType = Record<never, never>;
@@ -37,14 +37,14 @@ export interface SocketResponse<T extends SocketJSONType, J extends SocketJSONTy
   extends SocketState<T> {
   connect: () => WebSocket;
   socket: WebSocket;
-  sendData: (data: J) => void;
+  sendData: (name: string, data: J) => void;
 }
 export interface UseSocketProps<T extends SocketJSONType> extends SocketEvents<T> {
   endpoint?: string;
   url?: string;
+  shouldConnect?: boolean;
   reconnectInterval?: number;
-  // TODO: implement max reconnect attempts
-  // reconnectAttempts?: number;
+  maxRetries?: number;
 }
 
 /**
@@ -62,7 +62,9 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
   const {
     url: propUrl,
     endpoint,
+    shouldConnect = true,
     reconnectInterval = 1000,
+    maxRetries = 5,
     onClose,
     onError,
     onMessage,
@@ -73,15 +75,16 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const { connect: contextConnect, url: contextUrl } = useSocketContext();
 
-  // TODO: implement message queue here so we can call sendData before the socket is connected
   const socket = useRef<WebSocket>();
   const reconnect = useRef<boolean>(false);
+  const retryCount = useRef<number>(0);
   const reconnectTimer = useRef<number>(reconnectInterval);
 
-  const onCloseRef = useRef<(event: any) => void>();
-  const onMessageRef = useRef<(event: any) => void>();
-  const onErrorRef = useRef<(event: any) => void>();
-  const onOpenRef = useRef<(event: any) => void>();
+  const onCloseRef = useRef<WebSocket['onclose']>();
+  const onMessageRef = useRef<WebSocket['onmessage']>();
+  const onErrorRef = useRef<WebSocket['onerror']>();
+  const onOpenRef = useRef<WebSocket['onopen']>();
+  const subscriptions = useRef<Map<string, any>>(new Map());
 
   const [socketState, setSocketState] = useState<SocketState<T>>({
     readyState: READY_STATE.CLOSED,
@@ -94,14 +97,16 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     if (!url) {
       throw new Error('Websocket `url` not provided');
     }
-    const path = `${url}${endpoint || ''}`;
 
+    const path = `${url}${endpoint || ''}`;
     const _socket = contextConnect({ path });
-    reconnect.current = true;
+
     _socket.onclose = onCloseRef.current || null;
     _socket.onopen = onOpenRef.current || null;
     _socket.onerror = onErrorRef.current || null;
     _socket.onmessage = onMessageRef.current || null;
+
+    reconnect.current = true;
     socket.current = _socket;
 
     setSocketState((old) => ({
@@ -112,16 +117,33 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     return _socket;
   }, [propUrl, contextUrl, endpoint, contextConnect]);
 
-  const onopen = useCallback(
-    (event: any) => {
+  const subscribe = useCallback((subscription: string, data: any) => {
+    subscriptions.current.set(subscription, data);
+  }, []);
+
+  const resetRetryCount = useCallback(() => {
+    retryCount.current = 0;
+  }, []);
+
+  const sendSubscriptions = useCallback(() => {
+    subscriptions.current.forEach(function (value) {
+      socket.current?.send(JSON.stringify(value));
+    });
+  }, []);
+
+  const onopen: WebSocket['onopen'] = useCallback(
+    (event: WebSocketEventMap['open']) => {
+      resetRetryCount();
       setSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
+      sendSubscriptions();
+
       return onOpen?.(event);
     },
-    [onOpen],
+    [onOpen, resetRetryCount, sendSubscriptions],
   );
 
-  const onmessage = useCallback(
-    (event: any) => {
+  const onmessage: WebSocket['onmessage'] = useCallback(
+    (event: MessageEvent) => {
       setSocketState((old) => ({ ...old, lastData: event.data }));
       let { data } = event;
       try {
@@ -134,35 +156,60 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
     [onMessage],
   );
 
-  const onclose = useCallback(
-    (event: any) => {
-      setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
+  const retry = useCallback(() => {
+    setTimeout(() => {
+      console.warn('Reconnecting...', { maxRetries, retryCount: retryCount.current });
+      retryCount.current = retryCount.current + 1;
 
-      // Connection Closed; try to reconnect when reconnect is true
-      // TODO: implement max reconnect attempts
-      if (reconnect.current) {
-        setTimeout(() => {
-          console.warn('Reconnecting...', reconnectTimer.current);
-          connect();
-        }, reconnectTimer.current * 2);
+      connect();
+    }, reconnectTimer.current * retryCount.current);
+  }, [connect, maxRetries]);
+
+  const onclose: WebSocket['onclose'] = useCallback(
+    (event: CloseEvent) => {
+      setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
+      onClose?.(event);
+
+      /**
+       * Connection Closed; try to reconnect when reconnect is true
+       *
+       * 1000: Normal Closure. This means that the connection was closed, or is being closed, without any error.
+       * 1005: No Status Received: also sometimes gets send back
+       *
+       * I dont feel like we can rely on status codes here so we just check if we should reconnect manually.
+       *
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
+       */
+
+      if (retryCount.current >= maxRetries || !reconnect.current) {
+        return;
       }
+      retry();
       onClose?.(event);
     },
-    [onClose, connect],
+    [maxRetries, onClose, retry],
   );
 
-  // Fixme: Some anys used here because addEventListener websocket types keep complaining
-  const onerror = useCallback(
-    (event: any) => {
+  const onerror: WebSocket['onerror'] = useCallback(
+    (event: Event) => {
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
       onError?.(event);
     },
     [onError],
   );
 
-  const sendData = useCallback((data: J) => {
-    socket.current?.send(JSON.stringify(data));
-  }, []);
+  const sendData = useCallback(
+    (name: string, message: J) => {
+      // Add the subscription to the list
+      subscribe(name, message);
+
+      // Send the message directly if the connection is already open
+      if (socket.current?.readyState === WebSocket.OPEN) {
+        socket.current.send(JSON.stringify(message));
+      }
+    },
+    [subscribe],
+  );
 
   /**
    * Close the websocket connection; do not reconnect
@@ -181,7 +228,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
       if (!socket.current) return;
 
       if (document.visibilityState === 'hidden') {
-        close();
+        close(1000);
         onTabLeave?.(socket.current?.readyState);
       } else {
         // Connection Closing but not closed yet; just set reconect to true so it will reconnect on close.
@@ -216,20 +263,29 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
   onMessageRef.current = onmessage;
 
   /**
+   * Check if the socket is we should connect to the socket
    * Close the websocket connection on unmount
    */
   useEffect(() => {
-    return () => {
-      close(1000, 'Disconnecting Socket on unmount!');
-    };
-  }, [close]);
+    if (shouldConnect) {
+      connect();
 
-  return {
-    connect,
-    socket: socket.current,
-    sendData,
-    ...socketState,
-  } as SocketResponse<T, J>;
+      return () => {
+        close(1000, 'Disconnecting Socket on unmount!');
+      };
+    }
+  }, [close, connect, shouldConnect]);
+
+  return useMemo(
+    () =>
+      ({
+        connect,
+        socket: socket.current,
+        sendData,
+        ...socketState,
+      }) as SocketResponse<T, J>,
+    [connect, sendData, socketState],
+  );
 };
 
 export { useSocket };
