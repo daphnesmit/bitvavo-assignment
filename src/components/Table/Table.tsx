@@ -48,7 +48,7 @@ export function Table<T>({ columns, data, gridColumns, ...rest }: TableProps<T>)
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    debugTable: import.meta.env.DEV,
+    debugTable: !!process.env.DEV,
     ...rest,
   });
 

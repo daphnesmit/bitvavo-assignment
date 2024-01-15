@@ -22,7 +22,7 @@ module.exports = {
     "plugin:@tanstack/eslint-plugin-query/recommended",
     'prettier'
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', 'prettier.config.cjs'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'prettier.config.cjs', 'jest.config.cjs'],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh', '@tanstack/query'],
   rules: {
@@ -31,5 +31,6 @@ module.exports = {
       { allowConstantExport: true },
     ],
     'react/display-name' : 'off',
+    '@typescript-eslint/no-unsafe-call': 'off',
   },
 }

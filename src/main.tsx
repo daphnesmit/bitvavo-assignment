@@ -9,7 +9,7 @@ import SocketProvider from './hooks/subscriptions/UseSocket/SocketProvider.tsx';
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <SocketProvider url={import.meta.env.VITE_BITVAVO_WS_URL as string}>
+      <SocketProvider url={process.env.VITE_BITVAVO_WS_URL as string}>
         <App />
       </SocketProvider>
     </QueryClientProvider>
