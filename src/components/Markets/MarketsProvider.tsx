@@ -11,15 +11,15 @@ const MarketsProvider = ({ children }: React.PropsWithChildren<unknown>) => {
     refetchOnWindowFocus: false,
   });
 
-  const tableData = useMemo(() => getMarketsTableData(data || []), [data]);
+  const tableData = useMemo(() => getMarketsTableData(Array.isArray(data) ? data : []), [data]);
 
   const store: MarketsContextProps = useMemo(
     () => ({
       tableData,
       isLoading,
-      hasError: !!error,
+      hasError: !!error || !Array.isArray(data),
     }),
-    [error, isLoading, tableData],
+    [error, isLoading, data, tableData],
   );
   return <MarketsContext.Provider value={store}>{children}</MarketsContext.Provider>;
 };
