@@ -133,7 +133,6 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const onopen: WebSocket['onopen'] = useCallback(
     (event: WebSocketEventMap['open']) => {
-      console.log('open');
       resetRetryCount();
       setSocketState((old) => ({ ...old, readyState: WebSocket.OPEN }));
       sendSubscriptions();
@@ -168,7 +167,6 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const onclose: WebSocket['onclose'] = useCallback(
     (event: CloseEvent) => {
-      console.log('close');
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
       onClose?.(event);
 
@@ -176,14 +174,14 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
        * Connection Closed; try to reconnect when reconnect is true
        *
        * 1000: Normal Closure. This means that the connection was closed, or is being closed, without any error.
-       * 1005: No Status Received. This is unfortunately send back when bitvavo api hits the rate limiting. This is not a status code we can handle.
+       * 1005: No Status Received: also sometimes gets send back
        *
-       * TODO: I suggest to add a better status code to the bitvavo api when rate limiting is hit.
+       * I dont feel like we can rely on status codes here so we just check if we should reconnect manually.
        *
        * @see https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent
        */
 
-      if (event.code === 1000 || event.code === 1005 || retryCount.current >= maxRetries) {
+      if (retryCount.current >= maxRetries || !reconnect.current) {
         return;
       }
       retry();
@@ -194,7 +192,6 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
 
   const onerror: WebSocket['onerror'] = useCallback(
     (event: Event) => {
-      console.log('error');
       setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
       onError?.(event);
     },
@@ -218,6 +215,7 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
    * Close the websocket connection; do not reconnect
    */
   const close = useCallback((code?: number, reason?: string) => {
+    reconnect.current = false;
     socket.current?.close(code, reason);
   }, []);
 
@@ -230,23 +228,21 @@ const useSocket: <T extends SocketJSONType, J extends SocketJSONType>(
       if (!socket.current) return;
 
       if (document.visibilityState === 'hidden') {
-        console.log('hidden...');
-        close();
+        close(1000);
         onTabLeave?.(socket.current?.readyState);
       } else {
         // Connection Closing but not closed yet; just set reconect to true so it will reconnect on close.
         if (socket.current?.readyState === WebSocket.CLOSING) {
-          console.log('closing... visible');
+          reconnect.current = true;
           setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSING }));
           onTabEnter?.(WebSocket.CLOSING);
         }
         // Connection Closed; try to reconnect directly
         if (socket.current?.readyState === WebSocket.CLOSED) {
-          console.log('closed... visible');
           setSocketState((old) => ({ ...old, readyState: WebSocket.CLOSED }));
+          connect();
           onTabEnter?.(WebSocket.CLOSED);
         }
-        connect();
       }
     };
 

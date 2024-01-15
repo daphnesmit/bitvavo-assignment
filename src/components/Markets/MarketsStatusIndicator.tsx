@@ -21,7 +21,6 @@ const MarketsStatusIndicator = ({ statusCode }: MarketsStatusIndicatorProps) => 
     3: 'bg-gray-600',
     4: 'bg-red-500',
   };
-  console.log(statusCode);
   return (
     <span
       aria-live="assertive"
